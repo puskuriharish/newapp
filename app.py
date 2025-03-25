@@ -1,55 +1,43 @@
 import streamlit as st
 import openai
 import os
-import json
 
-# Load prompts from JSON file
-def load_prompts():
-    with open("prompts.json", "r") as file:
-        return json.load(file)
+def generate_itinerary(destination, budget, duration, interests):
+    """Generate a travel itinerary using OpenAI API."""
+    prompt = f"""
+    You are a travel assistant. Generate a {duration}-day itinerary for {destination}.
+    The user has a {budget} budget and is interested in {interests}.
+    Provide a structured day-by-day plan with activities, accommodations, and food suggestions.
+    """
 
-# Set OpenAI API key from environment variable
-openai.api_key = os.getenv("OPENAI_API_KEY")
+    response = openai.ChatCompletion.create(
+        model="gpt-4-turbo",
+        messages=[
+            {"role": "system", "content": "You are a travel planner."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7
+    )
 
-# Load prompts
-prompts = load_prompts()
+    itinerary = response.choices[0].message["content"]
+    return itinerary  # ✅ Indentation fixed (now inside the function)
 
-# App title and intro
-st.title("✈️ AI Travel Planner")
-st.write("Plan your next adventure with personalized itineraries!")
+# Set OpenAI API Key
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Use environment variable for security
 
-# Collect user input
-budget = st.selectbox("What's your budget?", ["Low", "Moderate", "High"])
-duration = st.number_input("How many days is your trip?", min_value=1, max_value=30, step=1)
-destination = st.text_input("Where are you traveling to?")
-start_location = st.text_input("Where are you starting from?")
-purpose = st.selectbox("What's the purpose of your trip?", ["Leisure", "Adventure", "Work", "Honeymoon", "Other"])
-interests = st.text_area("Any specific preferences or interests? (e.g., food, culture, adventure)")
+# Streamlit UI
+st.title("AI-Powered Travel Planner")
 
-# Generate itinerary when user clicks
+# User Inputs
+destination = st.text_input("Enter your destination:")
+budget = st.selectbox("Select your budget:", ["Budget", "Mid-range", "Luxury"])
+duration = st.slider("Trip Duration (in days):", 1, 14, 5)
+interests = st.text_area("What are your interests? (e.g., history, food, nature)")
+
 if st.button("Generate Itinerary"):
-    if destination and duration:
-        # Prepare user inputs
-        user_input = {
-            "destination": destination,
-            "duration": duration,
-            "budget": budget,
-            "purpose": purpose,
-            "interests": interests
-        }
-        
-        # Build prompt
-        prompt = prompts["final_itinerary_prompt"].format(**user_input)
-        
-        # Generate response
-        response = openai.Completion.create(
-            engine="davinci",
-            prompt=prompt,
-            max_tokens=500
-        )
-        
-        # Display itinerary
+    if destination and interests:
+        itinerary = generate_itinerary(destination, budget, duration, interests)
         st.subheader("Your Personalized Itinerary:")
-        st.write(response.choices[0].text.strip())
+        st.write(itinerary)
     else:
-        st.warning("Please provide at least the destination and duration.")
+        st.warning("Please enter all required details.")
